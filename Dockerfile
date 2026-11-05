@@ -18,7 +18,9 @@ WORKDIR /gogs.io/gogs
 COPY . .
 COPY --from=webbuilder /src/public/dist ./public/dist
 
-RUN go build -v -trimpath -tags "pam prod" \
+# VCS stamping is disabled because .dockerignore makes the tree look dirty, which would
+# stamp a pseudo-version that vulnerability scanners match against old Gogs advisories.
+RUN go build -v -trimpath -buildvcs=false -tags "pam prod" \
   -ldflags "-X 'gogs.io/gogs/internal/conf.BuildTime=$(date -u '+%Y-%m-%d %I:%M:%S %Z')' -X 'gogs.io/gogs/internal/conf.BuildCommit=$(git rev-parse HEAD)'" \
   -o .bin/gogs ./cmd/gogs
 
@@ -28,6 +30,7 @@ RUN apk --no-cache --no-progress add \
   ca-certificates \
   curl \
   git \
+  gosu \
   linux-pam \
   openssh \
   s6 \

@@ -33,3 +33,25 @@ func TestRenderIndex_injection(t *testing.T) {
 	// The head injection lands inside <head>, before </head>.
 	assert.Less(t, strings.Index(out, `<meta name="head-marker">`), strings.Index(out, `</head>`))
 }
+
+func TestRenderIndex_assetPaths(t *testing.T) {
+	shell := `<html><head>{{.WebContext}}<link rel="stylesheet" href="./assets/index-abc.css"></head>` +
+		`<body><script type="module" src="./assets/index-abc.js"></script></body></html>`
+
+	tests := []struct {
+		name   string
+		subURL string
+		want   string
+	}{
+		{name: "root mount", subURL: "", want: "/assets/index-abc.js"},
+		{name: "subpath mount", subURL: "/gogs", want: "/gogs/assets/index-abc.js"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := renderIndex([]byte(shell), context.WebContext{Lang: "en-US", SubURL: test.subURL}, injectContent{})
+			require.NoError(t, err)
+			assert.Contains(t, string(got), `src="`+test.want+`"`)
+			assert.NotContains(t, string(got), `"./assets/`)
+		})
+	}
+}

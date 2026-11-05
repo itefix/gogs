@@ -881,24 +881,22 @@ func renderIndex(index []byte, wc context.WebContext, inject injectContent) ([]b
 	script := `<script>window.__webContext=` + string(payload) +
 		`;document.documentElement.lang=window.__webContext.lang;</script>`
 
-	pairs := []string{
+	// The entrypoint paths are always made absolute (prefixed with the subpath,
+	// which is empty for root mounts). Relative paths would break on deep URLs
+	// like /user/sign-in, where "./assets/" resolves to "/user/assets/". Other
+	// bundled assets stay relative to the entrypoint that references them.
+	r := strings.NewReplacer(
 		// Append the head injection after the web context script so custom
 		// tags land inside <head>. The footer injection replaces the closing
 		// body tag to land just before </body>.
-		"{{.WebContext}}", script + inject.head,
-		"</body>", inject.footer + "</body>",
-	}
-	if wc.SubURL != "" {
-		// Prefix entrypoint paths with the subpath for non-root mounts. Other
-		// bundled assets stay relative to the entrypoint that references them.
-		pairs = append(pairs,
-			`src="./assets/`, `src="`+wc.SubURL+`/assets/`,
-			`href="./assets/`, `href="`+wc.SubURL+`/assets/`,
-			`src="/src/`, `src="`+wc.SubURL+`/src/`,
-			`href="/img/`, `href="`+wc.SubURL+`/img/`,
-		)
-	}
-	return []byte(strings.NewReplacer(pairs...).Replace(string(index))), nil
+		"{{.WebContext}}", script+inject.head,
+		"</body>", inject.footer+"</body>",
+		`src="./assets/`, `src="`+wc.SubURL+`/assets/`,
+		`href="./assets/`, `href="`+wc.SubURL+`/assets/`,
+		`src="/src/`, `src="`+wc.SubURL+`/src/`,
+		`href="/img/`, `href="`+wc.SubURL+`/img/`,
+	)
+	return []byte(r.Replace(string(index))), nil
 }
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
